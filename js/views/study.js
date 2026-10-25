@@ -1,0 +1,186 @@
+import state from '../state.js';
+import { metricLabel, t } from '../i18n.js';
+import { renderProgressBar } from '../components/progress-bar.js';
+import { openLightbox } from '../components/lightbox.js';
+
+export function renderStudy(questionIdx) {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+
+  state.currentQuestion = questionIdx;
+
+  const total = state.questionOrder.length;
+  const entry = state.questionOrder[questionIdx];
+  const {
+    baseModelName,
+    promptId,
+    seed,
+    prompt,
+    methodLeft,
+    methodRight,
+  } = entry;
+  const metrics = state.config.metrics;
+  const base = state.config.images_base_path;
+
+  if (!state.promptStartTimes[questionIdx]) {
+    state.promptStartTimes[questionIdx] = new Date().toISOString();
+  }
+
+  if (!state.responses[questionIdx]) {
+    state.responses[questionIdx] = {};
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'study';
+
+  wrapper.appendChild(renderProgressBar(
+    t('appTitle'),
+    questionIdx,
+    total,
+    state.config.study.show_save_exit,
+    () => { window.location.hash = '#done'; }
+  ));
+
+  const promptDiv = document.createElement('div');
+  promptDiv.className = 'study__prompt';
+  promptDiv.innerHTML = `
+    <span class="study__prompt-label">${t('prompt')}</span>
+    <span class="study__prompt-text">&ldquo;${prompt}&rdquo;</span>
+  `;
+  wrapper.appendChild(promptDiv);
+
+  const content = document.createElement('div');
+  content.className = 'study__content';
+
+  content.appendChild(
+    buildImagePanel(
+      'A',
+      buildImageSrc(base, baseModelName, methodLeft, promptId, seed)
+    )
+  );
+
+  // Center: metric buttons + next
+  const metricsPanel = document.createElement('div');
+  metricsPanel.className = 'metrics-panel';
+
+  const allAnswered = () =>
+    metrics.every(m => state.responses[questionIdx][m.id] !== undefined);
+
+  for (const metric of metrics) {
+    const currentVal = state.responses[questionIdx][metric.id] ?? null;
+    metricsPanel.appendChild(
+      createMetricButtons(metric.id, metricLabel(metric), currentVal, (metricId, value) => {
+        state.responses[questionIdx][metricId] = value;
+        nextBtn.disabled = !allAnswered();
+      })
+    );
+  }
+
+  const isLast = questionIdx === total - 1;
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'btn btn--primary study__next-btn';
+  nextBtn.textContent = isLast ? t('finish') : t('next');
+  nextBtn.disabled = !allAnswered();
+  nextBtn.addEventListener('click', () => {
+    window.location.hash = isLast ? '#done' : `#study/${questionIdx + 1}`;
+  });
+  metricsPanel.appendChild(nextBtn);
+
+  content.appendChild(metricsPanel);
+  content.appendChild(
+    buildImagePanel(
+      'B',
+      buildImageSrc(base, baseModelName, methodRight, promptId, seed)
+    )
+  );
+
+  wrapper.appendChild(content);
+  app.appendChild(wrapper);
+}
+
+function buildImageSrc(base, baseModelName, method, promptId, seed) {
+  const promptIdPadded = String(promptId).padStart(3, '0');
+  if (seed === undefined || seed === null || seed === '') {
+    return `${base}/${baseModelName}/${method}/${promptIdPadded}.png`;
+  }
+  return `${base}/${baseModelName}/${method}/${promptIdPadded}_s${seed}.png`;
+}
+
+function createMetricButtons(metricId, label, initialValue, onChange) {
+  const group = document.createElement('div');
+  group.className = 'metric-btn-group';
+
+  const heading = document.createElement('div');
+  heading.className = 'metric-btn-group__label';
+  heading.textContent = label;
+
+  const buttons = document.createElement('div');
+  buttons.className = 'metric-btn-group__buttons';
+
+  const options = [
+    { value: -1, text: t('aWins'), cls: 'metric-btn--a' },
+    { value:  0, text: t('tie'),   cls: 'metric-btn--tie' },
+    { value:  1, text: t('bWins'), cls: 'metric-btn--b' },
+  ];
+
+  for (const opt of options) {
+    const btn = document.createElement('button');
+    btn.className = `metric-btn ${opt.cls}`;
+    btn.textContent = opt.text;
+    if (initialValue === opt.value) btn.classList.add('metric-btn--selected');
+
+    btn.addEventListener('click', () => {
+      buttons.querySelectorAll('.metric-btn').forEach(b => b.classList.remove('metric-btn--selected'));
+      btn.classList.add('metric-btn--selected');
+      onChange(metricId, opt.value);
+    });
+
+    buttons.appendChild(btn);
+  }
+
+  group.appendChild(heading);
+  group.appendChild(buttons);
+  return group;
+}
+
+function buildImagePanel(label, src) {
+  const side = document.createElement('div');
+  side.className = 'study__side';
+
+  const badge = document.createElement('div');
+  badge.className = 'study__image-badge';
+  badge.textContent = `${t('image')} ${label}`;
+
+  const imgWrap = document.createElement('div');
+  imgWrap.className = 'study__image-wrap';
+
+  const skeleton = document.createElement('div');
+  skeleton.className = 'study__image-skeleton';
+  imgWrap.appendChild(skeleton);
+
+  const img = document.createElement('img');
+  img.className = 'study__image';
+  img.alt = `${t('image')} ${label}`;
+
+  img.addEventListener('load', () => {
+    skeleton.remove();
+    img.classList.add('study__image--loaded');
+  });
+
+  img.addEventListener('error', () => {
+    skeleton.remove();
+    imgWrap.dataset.error = t('imageNotFound');
+    imgWrap.classList.add('study__image-wrap--error');
+  });
+
+  img.src = src;
+  imgWrap.appendChild(img);
+
+  imgWrap.addEventListener('click', () => {
+    if (img.complete && img.naturalWidth > 0) openLightbox(src);
+  });
+
+  side.appendChild(badge);
+  side.appendChild(imgWrap);
+  return side;
+}

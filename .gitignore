@@ -1,0 +1,4 @@
+# Ignore image files — too large for GitHub; run locally with serve.py
+__pycache__/
+notebooks/
+.DS_Store

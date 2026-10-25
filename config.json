@@ -1,0 +1,21 @@
+{
+  "study": {
+    "title": "Visual Quality Assessment",
+    "show_save_exit": true,
+    "rotate_prompt": "Please rotate your phone to landscape mode for the best experience."
+  },
+  "metrics": [
+    {
+      "id": "quality",
+      "label": "Quality"
+    },
+    {
+      "id": "prompt_alignment",
+      "label": "Prompt Alignment"
+    }
+  ],
+  "questions_per_session": 100,
+  "base_model_names": ["flux2", "zimage"],
+  "images_base_path": "images",
+  "googleAppsScriptUrl": "https://script.google.com/macros/s/AKfycbyW3-K-nDevceufpf2XvvVWWZtlmedKoWH8r7a5A3VLl_CNASR1sflvEn19uT5MeBUCQg/exec"
+}

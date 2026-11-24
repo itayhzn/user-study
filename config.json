@@ -1,21 +1,24 @@
 {
   "study": {
-    "title": "Visual Quality Assessment",
+    "title": "Image Description Assessment",
     "show_save_exit": true,
+    "highlight_differences": true,
     "rotate_prompt": "Please rotate your phone to landscape mode for the best experience."
   },
   "metrics": [
     {
-      "id": "quality",
-      "label": "Quality"
+      "id": "fluency",
+      "label": "Fluency"
     },
     {
-      "id": "prompt_alignment",
-      "label": "Prompt Alignment"
+      "id": "accuracy",
+      "label": "Accuracy"
+    },
+    {
+      "id": "details",
+      "label": "Correct Details"
     }
   ],
-  "questions_per_session": 100,
-  "base_model_names": ["flux2", "zimage"],
   "images_base_path": "images",
-  "googleAppsScriptUrl": "https://script.google.com/macros/s/AKfycbyW3-K-nDevceufpf2XvvVWWZtlmedKoWH8r7a5A3VLl_CNASR1sflvEn19uT5MeBUCQg/exec"
+  "googleAppsScriptUrl": "YOUR_APPS_SCRIPT_URL_HERE"
 }

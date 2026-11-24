@@ -10,8 +10,8 @@
  *    - Who has access: Anyone
  * 5. Copy the web app URL into config.json's googleAppsScriptUrl field
  *
- * Row format: one row per metric per question, comparing toktimer against
- * method_opponent. ours_won is 1 when toktimer wins, -1 when the opponent wins,
+ * Row format: one row per metric per question, comparing dch against
+ * method_opponent. ours_won is 1 when dch wins, -1 when the opponent wins,
  * 0 for ties, and blank for unanswered metrics.
  */
 
@@ -21,8 +21,8 @@ function doPost(e) {
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 
     var HEADERS = [
-      'timestep', 'session_id', 'user', 'start_time', 'end_time',
-      'model', 'prompt_id', 'seed',
+      'timestep', 'session_id', 'user', 'rotation', 'language', 'start_time', 'end_time',
+      'bench', 'caption_id', 'question_index',
       'method_left', 'method_right', 'method_opponent',
       'metric', 'ours_won'
     ];

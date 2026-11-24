@@ -7,9 +7,8 @@ function buildRows(endTime) {
 
   for (let i = 0; i < state.questionOrder.length; i++) {
     const {
-      baseModelName,
-      promptId,
-      seed,
+      captionId,
+      bench,
       methodLeft,
       methodRight,
       methodOpponent,
@@ -33,11 +32,13 @@ function buildRows(endTime) {
         timestep,
         session_id: state.sessionId,
         user: state.userName,
+        rotation: state.rotation,
+        language: state.language,
         start_time: startTime,
         end_time: endTime,
-        model: baseModelName,
-        prompt_id: promptId,
-        seed,
+        bench,
+        caption_id: captionId,
+        question_index: i,
         method_left: methodLeft,
         method_right: methodRight,
         method_opponent: methodOpponent,
@@ -55,7 +56,7 @@ function downloadJson(rows) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `pairwise-response-${state.sessionId}.json`;
+  a.download = `caption-response-${state.sessionId}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

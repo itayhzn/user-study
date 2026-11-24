@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { t } from '../i18n.js';
+import { metricLabel, t } from '../i18n.js';
 
 export function renderInstructions() {
   const app = document.getElementById('app');
@@ -18,20 +18,17 @@ export function renderInstructions() {
     </p>
     <div class="welcome__instructions instructions-card__body">
       <ol>
-        <li>
-          <strong>${t('quality')}:</strong>
-          ${t('qualityInstruction')}
-        </li>
-        <li>
-          <strong>${t('promptAlignment')}:</strong>
-          ${t('alignmentInstruction')}
-        </li>
+        ${state.config.metrics
+          .map((m) => `<li><strong>${metricLabel(m)}:</strong> ${t(`${m.id}Instruction`)}</li>`)
+          .join('')}
       </ol>
     </div>
     <div class="instructions-card__example">
       <strong>${t('exampleLabel')}</strong>
       ${t('instructionsExample')}
     </div>
+    <p class="instructions-card__consent">${t('instructionsTie')}</p>
+    <p class="instructions-card__consent">${t('consent')}</p>
     <button type="button" class="btn btn--primary instructions-card__button">
       ${t('startQuestions')}
     </button>

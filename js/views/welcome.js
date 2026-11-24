@@ -2,24 +2,10 @@ import state from '../state.js';
 import { LANGUAGES, setLanguage, t } from '../i18n.js';
 import { initializePairwiseSession } from '../randomization.js';
 
-async function loadPrompts(language) {
-  const base = state.config.images_base_path;
-  const languageAliases = {
-    en: ['en', 'eng', ''],
-    he: ['he', 'heb', ''],
-  };
-  const candidates = languageAliases[language] || [language];
-
-  let res = null;
-  for (const candidate of candidates) {
-    const filename = candidate ? `prompts.${candidate}.txt` : 'prompts.txt';
-    res = await fetch(`${base}/${filename}`, { cache: 'no-store' });
-    if (res.ok) break;
-  }
-
-  if (!res || !res.ok) throw new Error(`Could not load prompts for ${language}`);
-  const text = await res.text();
-  return text.split(/\r?\n/);
+// Average number of questions per rater (identical pairs are never shown).
+function estimateQuestions({ opponents, items }) {
+  const shown = items.reduce((n, it) => n + opponents.length - it.identical.length, 0);
+  return `~${Math.round(shown / opponents.length)}`;
 }
 
 export function renderWelcome() {
@@ -33,7 +19,7 @@ export function renderWelcome() {
   card.className = 'welcome__card';
 
   const title = t('appTitle');
-  const total = state.questionOrder.length || state.config.questions_per_session;
+  const total = state.questionOrder.length || estimateQuestions(state.manifest);
   const languageOptions = Object.entries(LANGUAGES)
     .map(([value, label]) => `
       <label class="language-toggle__option">
@@ -92,7 +78,7 @@ export function renderWelcome() {
     });
   });
 
-  form.addEventListener('submit', async (e) => {
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
     const name = input.value.trim();
     if (!name) {
@@ -101,29 +87,15 @@ export function renderWelcome() {
     }
 
     error.textContent = '';
-    const submitButton = form.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
 
-    let prompts;
-    try {
-      prompts = await loadPrompts(state.language);
-    } catch (err) {
-      error.textContent = t('promptsLoadError');
-      submitButton.disabled = false;
-      return;
-    }
-
-    const { seed, sessionId, questionOrder } = initializePairwiseSession(
+    const { seed, rotation, sessionId, questionOrder } = initializePairwiseSession(
       name,
-      { ...state.manifest, prompts },
-      state.config.questions_per_session,
-      state.config.base_model_names
+      state.manifest
     );
 
     if (questionOrder.length === 0) {
       input.classList.add('invalid');
       error.textContent = t('noEligibleQuestions');
-      submitButton.disabled = false;
       return;
     }
 
@@ -134,6 +106,7 @@ export function renderWelcome() {
     state.promptStartTimes = {};
     state.currentQuestion = 0;
     state.randomizationSeed = seed;
+    state.rotation = rotation;
     state.sessionId = sessionId;
     state.questionOrder = questionOrder;
 

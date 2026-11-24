@@ -7,7 +7,8 @@ const state = {
   startTime: null,       // ISO string, set when questions begin.
   instructionsAccepted: false,
   randomizationSeed: 0,
-  questionOrder: [],     // [{ baseModelName, promptId, seed, prompt, methodLeft, methodRight, methodOpponent, oursMethod }]
+  rotation: 0,           // which opponent this rater sees for each caption
+  questionOrder: [],     // [{ captionId, bench, photo, methodLeft, methodRight, textLeft, textRight, methodOpponent, oursMethod }]
   responses: {},         // { questionIndex: { metricId: -1|0|1 } }
   promptStartTimes: {},  // { questionIndex: ISO string }
   currentQuestion: 0,

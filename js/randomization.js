@@ -1,5 +1,3 @@
-const OUR_METHOD = 'toktimer';
-
 // Mulberry32 seeded PRNG
 function mulberry32(seed) {
   return function () {
@@ -29,115 +27,52 @@ function generateSessionId(rng) {
   return `${ts}-${r1}-${r2}`;
 }
 
-export function initializePairwiseSession(userName, manifest, questionsPerSession, baseModelNames = null) {
+function shuffle(list, rng) {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+// Rotation of this rater: ?r=K in the link (K = 1, 2, 3, ...) if given, else from the name.
+export function rotationFor(userName, numOpponents) {
+  const fromLink = Number.parseInt(new URLSearchParams(window.location.search).get('r'), 10);
+  if (Number.isInteger(fromLink) && fromLink >= 1) return (fromLink - 1) % numOpponents;
+  return hashString(userName.toLowerCase().trim()) % numOpponents;
+}
+
+/**
+ * Latin-square session: every caption appears once per rater, against one opponent, and
+ * raters of consecutive rotations see the same caption against different opponents.
+ * Three rotations cover every (caption, opponent) pair once. Pairs whose texts are
+ * identical are skipped (the analysis counts them as ties). Question order and A/B sides
+ * are random per rater.
+ */
+export function initializePairwiseSession(userName, manifest) {
   const seed = hashString(userName.toLowerCase().trim());
   const rng = mulberry32(seed);
-  const prompts = Array.isArray(manifest.prompts) ? manifest.prompts : [];
-  const allowedBaseModels = new Set(
-    Array.isArray(baseModelNames) ? baseModelNames.map((name) => String(name)) : []
-  );
-  const eligibleBaseModels = buildEligibleBaseModels(
-    manifest.base_models || [],
-    allowedBaseModels
-  );
-  const questionCount = Math.max(0, Number(questionsPerSession) || 0);
+  const { ours, opponents, items } = manifest;
+  const rotation = rotationFor(userName, opponents.length);
+
   const questionOrder = [];
-
-  for (let i = 0; i < questionCount; i++) {
-    if (eligibleBaseModels.length === 0) break;
-
-    const baseModel = eligibleBaseModels[Math.floor(rng() * eligibleBaseModels.length)];
-    const pair = baseModel.validPairs[Math.floor(rng() * baseModel.validPairs.length)];
-    const promptId = pair.promptIds[Math.floor(rng() * pair.promptIds.length)];
-    const prompt = prompts[Number.parseInt(promptId, 10)] ?? '';
+  items.forEach((item, index) => {
+    const opponent = opponents[(index + rotation) % opponents.length];
+    if (item.identical.includes(opponent)) return;
     const swap = rng() < 0.5;
-
     questionOrder.push({
-      baseModelName: baseModel.name,
-      promptId,
-      seed: '',
-      prompt,
-      methodLeft: swap ? pair.opponent : pair.ours,
-      methodRight: swap ? pair.ours : pair.opponent,
-      methodOpponent: pair.opponent,
-      oursMethod: pair.ours,
+      captionId: item.id,
+      bench: item.bench,
+      photo: item.photo,
+      methodLeft: swap ? opponent : ours,
+      methodRight: swap ? ours : opponent,
+      textLeft: item.texts[swap ? opponent : ours],
+      textRight: item.texts[swap ? ours : opponent],
+      methodOpponent: opponent,
+      oursMethod: ours,
     });
-  }
+  });
+  shuffle(questionOrder, rng);
 
-  const sessionId = generateSessionId(rng);
-
-  return { seed, sessionId, questionOrder };
-}
-
-function buildEligibleBaseModels(baseModels, allowedBaseModels) {
-  return baseModels
-    .filter((baseModel) =>
-      allowedBaseModels.size === 0 || allowedBaseModels.has(baseModel.name)
-    )
-    .map((baseModel) => {
-      const methods = Array.isArray(baseModel.guidance_methods)
-        ? baseModel.guidance_methods
-        : [];
-
-      const promptIdsByMethod = new Map(
-        methods.map((method) => [
-          method.name,
-          normalizePromptIds(method),
-        ])
-      );
-
-      const oursPromptIds = promptIdsByMethod.get(OUR_METHOD);
-      if (!oursPromptIds || oursPromptIds.size === 0) return null;
-
-      const validPairs = [];
-      for (const method of methods) {
-        const opponent = method.name;
-        if (opponent === OUR_METHOD) continue;
-
-        const opponentPromptIds = promptIdsByMethod.get(opponent);
-        const promptIds = getSharedPromptIds(oursPromptIds, opponentPromptIds);
-
-        if (promptIds.length > 0) {
-          validPairs.push({
-            ours: OUR_METHOD,
-            opponent,
-            promptIds,
-          });
-        }
-      }
-
-      if (validPairs.length === 0) return null;
-      return {
-        name: baseModel.name,
-        validPairs,
-      };
-    })
-    .filter(Boolean);
-}
-
-function getSharedPromptIds(leftPromptIds, rightPromptIds) {
-  if (!leftPromptIds || !rightPromptIds) return [];
-  return [...leftPromptIds]
-    .filter((promptId) => rightPromptIds.has(promptId))
-    .sort(comparePromptIds);
-}
-
-function normalizePromptIds(method) {
-  if (Array.isArray(method.prompt_ids)) {
-    return new Set(method.prompt_ids.map((promptId) => String(promptId)));
-  }
-
-  const normalized = new Set();
-  const promptSeeds = method.prompt_seeds;
-  if (!promptSeeds || typeof promptSeeds !== 'object') return normalized;
-
-  for (const [promptId, seeds] of Object.entries(promptSeeds)) {
-    if (!Array.isArray(seeds)) continue;
-    if (seeds.length > 0) normalized.add(String(promptId));
-  }
-  return normalized;
-}
-
-function comparePromptIds(a, b) {
-  return Number.parseInt(a, 10) - Number.parseInt(b, 10) || a.localeCompare(b);
+  return { seed, rotation, sessionId: generateSessionId(rng), questionOrder };
 }

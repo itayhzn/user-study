@@ -74,7 +74,7 @@ async function init() {
           <h1 class="welcome__title">${t('manifestErrorTitle')}</h1>
           <p class="welcome__description">
             ${t('manifestErrorBody')} <code>images/manifest.json</code>.
-            ${t('manifestErrorHint')} <code>python scripts/generate_manifest.py</code>
+            ${t('manifestErrorHint')} <code>python scripts/build_study.py</code>
             ${t('manifestErrorSuffix')}
           </p>
         </div>
